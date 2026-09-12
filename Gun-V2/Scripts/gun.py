@@ -2,7 +2,7 @@
 Light gun shell v1  -  parametric CadQuery model
 Coordinates: X = forward (muzzle), Y = left (+) / right (-), Z = up.
 Split plane Y = 0.  Left half (Y>0) gets heat-set inserts, right half (Y<0) gets screw heads.
-All units mm.
+All units mm.  Values marked ASSUMED are waiting for the user's measurements.
 """
 import math
 import cadquery as cq
