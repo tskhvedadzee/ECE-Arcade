@@ -2,7 +2,7 @@
 Light gun shell v1  -  parametric CadQuery model
 Coordinates: X = forward (muzzle), Y = left (+) / right (-), Z = up.
 Split plane Y = 0.  Left half (Y>0) gets heat-set inserts, right half (Y<0) gets screw heads.
-All units mm.  Values marked ASSUMED are waiting for the user's measurements.
+All units mm.
 """
 import math
 import cadquery as cq
@@ -50,7 +50,8 @@ ESP_PCB_Z = 33.0          # underside of the PCB
 ESP_PCB_T = 1.6
 
 # ---------------------------------------------------------------- rocker power switch (ASSUMED KCD11 style)
-SW_CUT_Y, SW_CUT_Z = 19.2, 13.0
+SW_CUT_Y, SW_CUT_Z = 13.1, 8.5    # user's switch: 13.1 wide x 8.5 tall
+SW_PANEL = 1.6                    # wall is thinned to this around the hole so the snap clips can grab
 SW_Z = 9.8
 SW_DEPTH = 18.0
 
@@ -323,6 +324,8 @@ def openings():
     cuts.append(box(SLOT_X0, SLOT_X1, -(TRIG_T / 2 + 0.7), TRIG_T / 2 + 0.7, -1, WALL + 0.5))
     # rocker switch cut-out in the rear face
     cuts.append(box(-1, WALL + 1, -SW_CUT_Y / 2, SW_CUT_Y / 2, SW_Z - SW_CUT_Z / 2, SW_Z + SW_CUT_Z / 2))
+    # thin the rear wall from the inside around the switch hole
+    cuts.append(box(SW_PANEL, WALL + 0.5, -SW_CUT_Y / 2 - 2.5, SW_CUT_Y / 2 + 2.5, SW_Z - SW_CUT_Z / 2 - 2.5, SW_Z + SW_CUT_Z / 2 + 2.5))
     # USB-C opening in the rear of the butt (plug overmould clearance)
     port_u = BRD_U - 1.6 - 1.6
     cuts.append(grip_box(-G_OUT_D / 2 - FLARE - 1, -CAV_D / 2 + 0.5, port_u - 3.5, port_u + 3.5, -6.3, 6.3))
