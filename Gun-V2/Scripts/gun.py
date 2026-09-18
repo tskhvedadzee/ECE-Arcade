@@ -90,12 +90,14 @@ LEDGE_Y1 = 18.5                   # spring ledge spans the whole post, so the le
 # ---------------------------------------------------------------- grip
 RAKE = math.radians(16.0)
 G0X = 58.0                # grip centreline crosses body bottom (Z=0) here
-BAT_D, BAT_W, BAT_L = 43.0, 38.3, 77.5
-CAV_D = BAT_D + 3.0
-CAV_W = BAT_W + 1.2
+BAT_D, BAT_W, BAT_L = 42.6, 38.5, 77.8   # measured holder pack (front-back, side-side, length)
+BAT_WIRES_D = 44.6                       # measured front-back including the wires/BMS on its side
+CAV_D = 46.0                             # grip cavity front-back (unchanged outside size)
+CAV_W = 39.5                             # grip cavity side-to-side (unchanged outside size)
+BAT_HEADROOM = 2.0                       # free space between the pack and the stop tabs above it
 G_OUT_D = CAV_D + 2 * WALL
-BAT_U_TOP = -1.5
-SHELF_U = BAT_U_TOP + BAT_L          # battery rests here
+SHELF_U = 76.0                       # battery rests here (grip length unchanged)
+BAT_U_TOP = SHELF_U - BAT_L
 U_BOT = SHELF_U + 19.5               # outer bottom of the butt
 FLARE = 3.0
 
@@ -186,7 +188,7 @@ def outer_shell():
 # ======================================================================== cavities
 def cavities():
     c = box(WALL, FRONT_BLOCK_X0, -IHW, IHW, WALL, BODY_H - WALL)
-    gc = grip_box(-CAV_D / 2, CAV_D / 2, -30, U_BOT - WALL, -CAV_W / 2, CAV_W / 2, ch=1.5)
+    gc = grip_box(-CAV_D / 2, CAV_D / 2, -30, U_BOT - WALL, -CAV_W / 2, CAV_W / 2, ch=1.0)
     c = c.union(gc.intersect(box(-50, 300, -60, 60, -200, WALL + 0.5)))
     return c
 
@@ -254,7 +256,7 @@ def internals():
     # stop tabs above the battery pack (keeps it from sliding up into the body)
     for sgn in (1, -1):
         y0, y1 = sorted((sgn * (CAV_W / 2 + 0.3), sgn * 15.0))
-        parts.append(grip_box(-12, 12, BAT_U_TOP - 3.0, BAT_U_TOP - 0.4, y0, y1))
+        parts.append(grip_box(-12, 12, BAT_U_TOP - BAT_HEADROOM - 2.6, BAT_U_TOP - BAT_HEADROOM, y0, y1))
     # support rib under the front end of the charger board
     brd_u = BRD_U
     parts.append(grip_box(-CAV_D / 2 + 1 + CHG_L - 5, -CAV_D / 2 + 1 + CHG_L - 3, brd_u, U_BOT - WALL + 0.5, -8, 8))
