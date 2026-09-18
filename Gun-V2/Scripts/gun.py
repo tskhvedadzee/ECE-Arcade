@@ -63,23 +63,27 @@ PIV_X, PIV_Z = 98.0, 7.0          # pivot centre
 TRIG_T = 6.0                      # printed trigger thickness (Y)
 PIV_PIN_D = 4.0                   # pins on the shell
 PIV_HOLE_D = 4.4                  # hole in the trigger
-PULL_DEG = 11.0                   # travel from rest to the pull stop
-SLOT_X0, SLOT_X1 = 90.5, 106.5    # opening in the body floor
+PULL_DEG = 14.3                   # tuned so full pull pushes the roller to PRESS_TO
+SLOT_X0, SLOT_X1 = 89.0, 106.5    # opening in the body floor
 # roller microswitch (Omron SS-5GL2 pattern: 19.8 x 10.2 x 6.4, holes 2.35 dia, 9.5 apart, 2.9 from terminal edge)
 MS_L, MS_H, MS_T = 19.8, 10.2, 6.4
-MS_REAR_X = 109.35                # lever/roller face of the switch (switch stands upright, roller facing back)
-MS_Z0 = 4.2                       # bottom end of the switch
+ARM_FRONT_X = 101.0               # front face of the trigger arm at rest
+ROLLER_SLACK = 0.8                # free play between trigger arm and roller at rest
+MS_Z0 = 2.6                       # bottom end of the switch
 MS_HOLE_FROM_TERM = 2.9
 MS_HOLE_ENDS = (5.1, 14.6)        # hole positions along the switch length
 MS_PEG_D = 2.2
-ROLLER_D = 4.8
-ROLLER_FREE = 7.2                 # roller sticks out this far from the lever face when free (nominal)
-ROLLER_ALONG = 16.8               # roller centre from the hinge end (hinge at the bottom)
+ROLLER_D = 6.6                    # measured 6.5-6.8
+ROLLER_FREE = 10.5                # measured: top of roller 10.5 mm from the switch body when free
+ROLLER_FLAT = 0.4 + ROLLER_D      # roller top when the lever lies flat on the body (lever ~0.4 mm)
+PRESS_TO = ROLLER_FLAT + 0.5      # full pull pushes the roller to here: past any click point, short of flat
+MS_REAR_X = ARM_FRONT_X + ROLLER_SLACK + ROLLER_FREE   # lever/roller face of the switch
+ROLLER_ALONG = 18.7               # roller centre from the hinge end (hinge at the bottom), from the kit photo
 # torsion spring (kit spring, size ASSUMED until measured)
 SPR_X, SPR_Z = 85.0, 13.5         # spring post position
 SPR_POST_D = 2.6                  # fits any coil with inside diameter >= 3 mm
 SPR_Y0 = 3.5                      # coil sits between here and the left wall
-SPR_COIL_OD, SPR_COIL_L = 6.5, 8.0
+SPR_COIL_OD, SPR_COIL_L = 6.8, 8.0
 
 # ---------------------------------------------------------------- grip
 RAKE = math.radians(16.0)
@@ -100,7 +104,7 @@ BOSS_SINK = 1.0          # butt bosses sink into the floor (avoids tangent conta
 BRD_U = U_BOT - WALL - BOSS_OD + BOSS_SINK   # underside of the charger board (rests on the rear boss)
 
 # ---------------------------------------------------------------- screws / inserts
-INSERT_D = 4.0            # hole for M3 heat-set insert (adjust to your inserts)
+INSERT_D = 4.1            # hole for M3 heat-set insert (user insert OD 4.7 mm)
 INSERT_DEPTH = 6.5
 SCREW_CLR = 3.3
 HEAD_CB = 6.2             # counterbore for M3 socket head
@@ -273,7 +277,7 @@ def trigger(angle=0.0):
     blade_back = _catmull([(91.6, 2.4), (92.4, -4.0), (93.0, -12.0), (94.6, -20.0), (96.4, -24.4)])
     tip = _catmull([(96.4, -24.4), (99.0, -26.0), (102.6, -25.8), (105.2, -24.2)], 6)
     blade_front = _catmull([(105.2, -24.2), (102.4, -19.5), (100.6, -12.0), (101.6, -4.0), (104.2, 1.5), (104.6, 5.0)])
-    arm = [(103.2, 10.5), (101.0, 14.0), (101.0, 25.0), (95.0, 25.0), (95.0, 13.0), (92.0, 10.2), (84.0, 8.0), (84.0, 2.4)]
+    arm = [(103.2, 10.5), (ARM_FRONT_X, 14.0), (ARM_FRONT_X, 25.0), (95.0, 25.0), (95.0, 13.0), (92.0, 10.2), (84.0, 8.0), (84.0, 2.4)]
     prof = blade_back + tip[1:] + blade_front[1:] + arm
     t = side_extrude(prof, -TRIG_T / 2, TRIG_T / 2)
     t = t.union(cyl_y(PIV_X, PIV_Z, 12.0, -TRIG_T / 2, TRIG_T / 2))
@@ -292,7 +296,7 @@ def _tail_top_at_pull():
 def microswitch(pressed=False):
     """placeholder switch with roller lever (for checks and renders)"""
     body = box(MS_REAR_X, MS_REAR_X + MS_H, -MS_T / 2, MS_T / 2, MS_Z0, MS_Z0 + MS_L)
-    out = ROLLER_FREE if not pressed else 5.1
+    out = ROLLER_FREE if not pressed else PRESS_TO
     rc_x = MS_REAR_X - out + ROLLER_D / 2
     rc_z = MS_Z0 + ROLLER_ALONG
     roller = cyl_y(rc_x, rc_z, ROLLER_D, -1.6, 1.6)
