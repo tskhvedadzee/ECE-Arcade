@@ -81,11 +81,24 @@ PRESS_TO = ROLLER_FLAT + 0.5      # full pull pushes the roller to here: past an
 MS_REAR_X = ARM_FRONT_X + ROLLER_SLACK + ROLLER_FREE   # lever/roller face of the switch
 ROLLER_ALONG = 18.7               # roller centre from the hinge end (hinge at the bottom), from the kit photo
 # torsion spring (kit spring, size ASSUMED until measured)
-SPR_X, SPR_Z = 85.0, 13.5         # spring post position
-SPR_POST_D = 3.6                  # snug in a 6.5-6.8 mm coil with wire up to ~1.3 mm thick
-SPR_Y0 = 4.5                      # post tip: the coil can't get closer than 1.5 mm to the trigger
-SPR_COIL_OD, SPR_COIL_L = 6.8, 9.0 # measured outside diameter 6.5-6.8; length assumed
-LEDGE_Y1 = 18.5                   # spring ledge spans the whole post, so the leg lands on it anywhere
+SPR_X, SPR_Z = 85.0, 10.5         # lowered 3 mm: the solenoid was touching the coil
+SPR_BORE = 6.4                    # measured inner diameter of the coil
+SPR_POST_D = 6.2                  # snug in a 6.4 mm bore
+SPR_POST_TIP_D = 5.4              # lead-in taper so the coil starts easily
+SPR_TAPER = 1.2                   # length of that taper
+SPR_Y0 = 7.0                      # post tip, set so the plunger's return spring clears (see SPR_CLEAR_D)
+SPR_COIL_OD, SPR_COIL_L = 8.2, 12.0   # OD estimated from bore 6.4 + wire; conservative for checks
+# anchor fins for the long leg: pick whichever gives the best return force
+SPR_FIN_DEG = (40.0, 70.0, 100.0, 130.0)
+SPR_FIN_R0, SPR_FIN_R1 = 7.5, 11.0   # shorter fins: less reach toward the plunger
+SPR_FIN_T = 2.4                   # thicker fins: ~4x stiffer than 1.5 mm
+STOP_X0, STOP_X1 = 82.6, 92.0     # pull stop rib, moved toward the trigger and lengthened
+STOP_H = 3.2                      # rib height (kept low so it stays clear of the plunger)
+STOP_WEB_X0, STOP_WEB_X1 = 78.0, 82.6   # gusset web tying the rib down to the floor
+STOP_WEB_Y1 = -6.0                # web stops short of the centre, leaving a wire channel
+SPR_FIN_Y0 = 14.6                 # fins stand 5.0 mm proud of the wall
+SPR_CLEAR_D = 2 * SPR_FIN_Y0      # max diameter of anything on the front plunger
+LEDGE_Y1 = 9.5                    # short leg sits at the inner end of the coil, so the ledge is a short stub                   # spring ledge spans the whole post, so the leg lands on it anywhere
 
 # ---------------------------------------------------------------- grip
 RAKE = math.radians(16.0)
@@ -244,10 +257,15 @@ def internals():
         parts.append(cyl_y(hx, hz, MS_PEG_D, -msy, msy))
     # --- pull stop rib (right half) above the trigger tail
     stop_z = _tail_top_at_pull() + 0.05
-    parts.append(box(82.0, 86.8, -IHW, 0.0, stop_z, stop_z + 3.0))
+    parts.append(box(STOP_X0, STOP_X1, -IHW, 0.0, stop_z, stop_z + STOP_H))
+    parts.append(box(STOP_WEB_X0, STOP_WEB_X1, -IHW, STOP_WEB_Y1, WALL, stop_z + STOP_H))
     # --- torsion spring post (left half) and shelf for its rear leg
-    parts.append(cyl_y(SPR_X, SPR_Z, SPR_POST_D, SPR_Y0, IHW))
-    parts.append(box(72.0, 81.0, SPR_Y0, IHW, 9.5, 11.0))
+    parts.append(cyl_y(SPR_X, SPR_Z, SPR_POST_D, SPR_Y0 + SPR_TAPER, IHW))
+    parts.append(cq.Workplane("XZ").center(SPR_X, SPR_Z).circle(SPR_POST_TIP_D / 2)
+                 .workplane(offset=-SPR_TAPER).circle(SPR_POST_D / 2).loft()
+                 .translate((0, SPR_Y0 + SPR_TAPER, 0)))
+    for th in SPR_FIN_DEG:
+        parts.append(spring_fin(th))
 
     # --- battery shelves and charger support rib in the butt
     for sgn in (1, -1):
@@ -264,6 +282,13 @@ def internals():
 
 
 # ======================================================================== printed trigger
+def spring_fin(theta_deg):
+    """radial fin near the spring post; the long leg leans on its clockwise face"""
+    bar = box(-SPR_FIN_T / 2, SPR_FIN_T / 2, SPR_FIN_Y0, IHW, SPR_FIN_R0, SPR_FIN_R1)
+    bar = bar.rotate((0, 0, 0), (0, 1, 0), 90.0 - theta_deg)
+    return bar.translate((SPR_X, 0, SPR_Z))
+
+
 def _catmull(pts, n=8):
     import numpy as np
     P = np.array(pts, float); out = []
@@ -286,7 +311,8 @@ def trigger(angle=0.0):
     t = side_extrude(prof, -TRIG_T / 2, TRIG_T / 2)
     t = t.union(cyl_y(PIV_X, PIV_Z, 12.0, -TRIG_T / 2, TRIG_T / 2))
     # ledge for the spring's front leg (sticks out on the left side)
-    t = t.union(box(88.0, 92.0, TRIG_T / 2 - 0.5, LEDGE_Y1, 5.0, 8.0))
+    t = t.union(box(90.0, 93.2, TRIG_T / 2 - 0.5, LEDGE_Y1, 3.2, 5.6))
+    t = t.union(box(92.4, 93.2, TRIG_T / 2 - 0.5, LEDGE_Y1, 5.6, 6.8))
     t = t.cut(cyl_y(PIV_X, PIV_Z, PIV_HOLE_D, -10, 20))
     if angle:
         t = t.rotate((PIV_X, 0, PIV_Z), (PIV_X, 1, PIV_Z), angle)
@@ -294,7 +320,7 @@ def trigger(angle=0.0):
 
 def _tail_top_at_pull():
     """highest point of the trigger tail under the stop rib when fully pulled"""
-    t = trigger(PULL_DEG).intersect(box(82.0, 86.8, -10, 0, -5, 30))
+    t = trigger(PULL_DEG).intersect(box(STOP_X0, STOP_X1, -10, 0, -5, 30))
     return t.val().BoundingBox().zmax
 
 def microswitch(pressed=False):
@@ -399,7 +425,7 @@ def components():
     comp["microswitch"] = microswitch(pressed=False)
     comp["trigger"] = trigger()
     comp["spring"] = cyl_y(SPR_X, SPR_Z, SPR_COIL_OD, SPR_Y0, SPR_Y0 + SPR_COIL_L).cut(
-        cyl_y(SPR_X, SPR_Z, SPR_POST_D + 0.2, SPR_Y0 - 1, SPR_Y0 + 1 + SPR_COIL_L))
+        cyl_y(SPR_X, SPR_Z, SPR_POST_D - 0.2, SPR_Y0 - 1, SPR_Y0 + 1 + SPR_COIL_L))
     return comp
 
 
