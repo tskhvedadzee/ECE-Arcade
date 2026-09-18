@@ -2,7 +2,7 @@
 Light gun shell v1  -  parametric CadQuery model
 Coordinates: X = forward (muzzle), Y = left (+) / right (-), Z = up.
 Split plane Y = 0.  Left half (Y>0) gets heat-set inserts, right half (Y<0) gets screw heads.
-All units mm.
+All units mm.  
 """
 import math
 import cadquery as cq
@@ -36,12 +36,13 @@ FRONT_BLOCK_X0 = BODY_L - FRONT_WALL - NUT_POCKET_T - REAR_RIB
 
 # ---------------------------------------------------------------- solenoid JF-1039B
 SOL_L, SOL_W, SOL_H = 39.5, 26.3, 20.0   # length (X), width (Y), height (Z)
-SOL_X0 = 23.0
+SOL_X0 = 27.0            # moved 4 mm forward: fired rear end needs room
 SOL_Z0 = 14.0
 SOL_AXIS_Z = SOL_Z0 + SOL_H / 2
 PLUNGER_D = 9.0
-PLUNGER_FRONT = 30.0      # front protrusion at rest
-NUB_REAR = 5.0            # rear protrusion at rest (+10 mm stroke when fired)
+PLUNGER_FRONT = 25.0      # measured: front sticks out 25 mm at rest
+NUB_REAR = 10.0           # rear sticks out 10 mm at rest (74.5 - 39.5 - 25)
+SOL_STROKE = 10.0         # measured: rear sticks out 20 mm when fired
 
 # ---------------------------------------------------------------- ESP32 devkit
 ESP_L, ESP_W, ESP_T = 51.7, 28.3, 12.6
@@ -81,9 +82,10 @@ MS_REAR_X = ARM_FRONT_X + ROLLER_SLACK + ROLLER_FREE   # lever/roller face of th
 ROLLER_ALONG = 18.7               # roller centre from the hinge end (hinge at the bottom), from the kit photo
 # torsion spring (kit spring, size ASSUMED until measured)
 SPR_X, SPR_Z = 85.0, 13.5         # spring post position
-SPR_POST_D = 2.6                  # fits any coil with inside diameter >= 3 mm
-SPR_Y0 = 3.5                      # coil sits between here and the left wall
-SPR_COIL_OD, SPR_COIL_L = 6.8, 8.0
+SPR_POST_D = 3.6                  # snug in a 6.5-6.8 mm coil with wire up to ~1.3 mm thick
+SPR_Y0 = 4.5                      # post tip: the coil can't get closer than 1.5 mm to the trigger
+SPR_COIL_OD, SPR_COIL_L = 6.8, 9.0 # measured outside diameter 6.5-6.8; length assumed
+LEDGE_Y1 = 18.5                   # spring ledge spans the whole post, so the leg lands on it anywhere
 
 # ---------------------------------------------------------------- grip
 RAKE = math.radians(16.0)
@@ -282,7 +284,7 @@ def trigger(angle=0.0):
     t = side_extrude(prof, -TRIG_T / 2, TRIG_T / 2)
     t = t.union(cyl_y(PIV_X, PIV_Z, 12.0, -TRIG_T / 2, TRIG_T / 2))
     # ledge for the spring's front leg (sticks out on the left side)
-    t = t.union(box(88.0, 92.0, TRIG_T / 2 - 0.5, 14.0, 5.0, 8.0))
+    t = t.union(box(88.0, 92.0, TRIG_T / 2 - 0.5, LEDGE_Y1, 5.0, 8.0))
     t = t.cut(cyl_y(PIV_X, PIV_Z, PIV_HOLE_D, -10, 20))
     if angle:
         t = t.rotate((PIV_X, 0, PIV_Z), (PIV_X, 1, PIV_Z), angle)
@@ -380,7 +382,7 @@ def build():
 def components():
     comp = {}
     comp["solenoid"] = box(SOL_X0, SOL_X0 + SOL_L, -SOL_W / 2, SOL_W / 2, SOL_Z0, SOL_Z0 + SOL_H)
-    comp["plunger"] = cyl_x(0, SOL_AXIS_Z, PLUNGER_D, SOL_X0 - NUB_REAR - 10, SOL_X0 + SOL_L + PLUNGER_FRONT)
+    comp["plunger"] = cyl_x(0, SOL_AXIS_Z, PLUNGER_D, SOL_X0 - NUB_REAR - SOL_STROKE, SOL_X0 + SOL_L + PLUNGER_FRONT)
     comp["esp32"] = box(ESP_X0, ESP_X0 + ESP_L, -ESP_W / 2, ESP_W / 2, ESP_PCB_Z, ESP_PCB_Z + ESP_PCB_T + 3.2)
     comp["esp32_pins"] = box(ESP_X0 + 6, ESP_X0 + ESP_L - 7, -ESP_W / 2 + 0.3, ESP_W / 2 - 0.3, ESP_PCB_Z - 8.5, ESP_PCB_Z)
     comp["camera"] = cyl_x(0, CAM_Z, CAM_D, BODY_L + CAM_PROTRUDE - CAM_LEN, BODY_L + CAM_PROTRUDE)
@@ -394,8 +396,8 @@ def components():
     comp["rocker"] = box(WALL, WALL + SW_DEPTH, -SW_CUT_Y / 2 + 0.5, SW_CUT_Y / 2 - 0.5, SW_Z - SW_CUT_Z / 2 + 0.5, SW_Z + SW_CUT_Z / 2 - 0.5)
     comp["microswitch"] = microswitch(pressed=False)
     comp["trigger"] = trigger()
-    comp["spring"] = cyl_y(SPR_X, SPR_Z, SPR_COIL_OD, SPR_Y0 + 0.5, SPR_Y0 + 0.5 + SPR_COIL_L).cut(
-        cyl_y(SPR_X, SPR_Z, SPR_COIL_OD - 1.6, SPR_Y0, SPR_Y0 + 1 + SPR_COIL_L))
+    comp["spring"] = cyl_y(SPR_X, SPR_Z, SPR_COIL_OD, SPR_Y0, SPR_Y0 + SPR_COIL_L).cut(
+        cyl_y(SPR_X, SPR_Z, SPR_POST_D + 0.2, SPR_Y0 - 1, SPR_Y0 + 1 + SPR_COIL_L))
     return comp
 
 
