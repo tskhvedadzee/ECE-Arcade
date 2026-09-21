@@ -2,7 +2,7 @@
 Light gun shell v1  -  parametric CadQuery model
 Coordinates: X = forward (muzzle), Y = left (+) / right (-), Z = up.
 Split plane Y = 0.  Left half (Y>0) gets heat-set inserts, right half (Y<0) gets screw heads.
-All units mm.
+All units mm.  
 """
 import math
 import cadquery as cq
@@ -36,12 +36,13 @@ FRONT_BLOCK_X0 = BODY_L - FRONT_WALL - NUT_POCKET_T - REAR_RIB
 
 # ---------------------------------------------------------------- solenoid JF-1039B
 SOL_L, SOL_W, SOL_H = 39.5, 26.3, 20.0   # length (X), width (Y), height (Z)
-SOL_X0 = 23.0
+SOL_X0 = 27.0            # moved 4 mm forward: fired rear end needs room
 SOL_Z0 = 14.0
 SOL_AXIS_Z = SOL_Z0 + SOL_H / 2
 PLUNGER_D = 9.0
-PLUNGER_FRONT = 30.0      # front protrusion at rest
-NUB_REAR = 5.0            # rear protrusion at rest (+10 mm stroke when fired)
+PLUNGER_FRONT = 25.0      # measured: front sticks out 25 mm at rest
+NUB_REAR = 10.0           # rear sticks out 10 mm at rest (74.5 - 39.5 - 25)
+SOL_STROKE = 10.0         # measured: rear sticks out 20 mm when fired
 
 # ---------------------------------------------------------------- ESP32 devkit
 ESP_L, ESP_W, ESP_T = 51.7, 28.3, 12.6
@@ -63,33 +64,53 @@ PIV_X, PIV_Z = 98.0, 7.0          # pivot centre
 TRIG_T = 6.0                      # printed trigger thickness (Y)
 PIV_PIN_D = 4.0                   # pins on the shell
 PIV_HOLE_D = 4.4                  # hole in the trigger
-PULL_DEG = 11.0                   # travel from rest to the pull stop
-SLOT_X0, SLOT_X1 = 90.5, 106.5    # opening in the body floor
+PULL_DEG = 14.3                   # tuned so full pull pushes the roller to PRESS_TO
+SLOT_X0, SLOT_X1 = 89.0, 106.5    # opening in the body floor
 # roller microswitch (Omron SS-5GL2 pattern: 19.8 x 10.2 x 6.4, holes 2.35 dia, 9.5 apart, 2.9 from terminal edge)
 MS_L, MS_H, MS_T = 19.8, 10.2, 6.4
-MS_REAR_X = 109.35                # lever/roller face of the switch (switch stands upright, roller facing back)
-MS_Z0 = 4.2                       # bottom end of the switch
+ARM_FRONT_X = 101.0               # front face of the trigger arm at rest
+ROLLER_SLACK = 0.8                # free play between trigger arm and roller at rest
+MS_Z0 = 2.6                       # bottom end of the switch
 MS_HOLE_FROM_TERM = 2.9
 MS_HOLE_ENDS = (5.1, 14.6)        # hole positions along the switch length
 MS_PEG_D = 2.2
-ROLLER_D = 4.8
-ROLLER_FREE = 7.2                 # roller sticks out this far from the lever face when free (nominal)
-ROLLER_ALONG = 16.8               # roller centre from the hinge end (hinge at the bottom)
+ROLLER_D = 6.6                    # measured 6.5-6.8
+ROLLER_FREE = 10.5                # measured: top of roller 10.5 mm from the switch body when free
+ROLLER_FLAT = 0.4 + ROLLER_D      # roller top when the lever lies flat on the body (lever ~0.4 mm)
+PRESS_TO = ROLLER_FLAT + 0.5      # full pull pushes the roller to here: past any click point, short of flat
+MS_REAR_X = ARM_FRONT_X + ROLLER_SLACK + ROLLER_FREE   # lever/roller face of the switch
+ROLLER_ALONG = 18.7               # roller centre from the hinge end (hinge at the bottom), from the kit photo
 # torsion spring (kit spring, size ASSUMED until measured)
-SPR_X, SPR_Z = 85.0, 13.5         # spring post position
-SPR_POST_D = 2.6                  # fits any coil with inside diameter >= 3 mm
-SPR_Y0 = 3.5                      # coil sits between here and the left wall
-SPR_COIL_OD, SPR_COIL_L = 6.5, 8.0
+SPR_X, SPR_Z = 85.0, 10.5         # lowered 3 mm: the solenoid was touching the coil
+SPR_BORE = 6.4                    # measured inner diameter of the coil
+SPR_POST_D = 6.2                  # snug in a 6.4 mm bore
+SPR_POST_TIP_D = 5.4              # lead-in taper so the coil starts easily
+SPR_TAPER = 1.2                   # length of that taper
+SPR_Y0 = 7.0                      # post tip, set so the plunger's return spring clears (see SPR_CLEAR_D)
+SPR_COIL_OD, SPR_COIL_L = 8.2, 12.0   # OD estimated from bore 6.4 + wire; conservative for checks
+# anchor fins for the long leg: pick whichever gives the best return force
+SPR_FIN_DEG = (40.0, 70.0, 100.0, 130.0)
+SPR_FIN_R0, SPR_FIN_R1 = 7.5, 11.0   # shorter fins: less reach toward the plunger
+SPR_FIN_T = 2.4                   # thicker fins: ~4x stiffer than 1.5 mm
+STOP_X0, STOP_X1 = 82.6, 92.0     # pull stop rib, moved toward the trigger and lengthened
+STOP_H = 3.2                      # rib height (kept low so it stays clear of the plunger)
+STOP_WEB_X0, STOP_WEB_X1 = 78.0, 82.6   # gusset web tying the rib down to the floor
+STOP_WEB_Y1 = -6.0                # web stops short of the centre, leaving a wire channel
+SPR_FIN_Y0 = 14.6                 # fins stand 5.0 mm proud of the wall
+SPR_CLEAR_D = 2 * SPR_FIN_Y0      # max diameter of anything on the front plunger
+LEDGE_Y1 = 9.5                    # short leg sits at the inner end of the coil, so the ledge is a short stub                   # spring ledge spans the whole post, so the leg lands on it anywhere
 
 # ---------------------------------------------------------------- grip
 RAKE = math.radians(16.0)
 G0X = 58.0                # grip centreline crosses body bottom (Z=0) here
-BAT_D, BAT_W, BAT_L = 43.0, 38.3, 77.5
-CAV_D = BAT_D + 3.0
-CAV_W = BAT_W + 1.2
+BAT_D, BAT_W, BAT_L = 42.6, 38.5, 77.8   # measured holder pack (front-back, side-side, length)
+BAT_WIRES_D = 44.6                       # measured front-back including the wires/BMS on its side
+CAV_D = 46.0                             # grip cavity front-back (unchanged outside size)
+CAV_W = 39.5                             # grip cavity side-to-side (unchanged outside size)
+BAT_HEADROOM = 2.0                       # free space between the pack and the stop tabs above it
 G_OUT_D = CAV_D + 2 * WALL
-BAT_U_TOP = -1.5
-SHELF_U = BAT_U_TOP + BAT_L          # battery rests here
+SHELF_U = 76.0                       # battery rests here (grip length unchanged)
+BAT_U_TOP = SHELF_U - BAT_L
 U_BOT = SHELF_U + 19.5               # outer bottom of the butt
 FLARE = 3.0
 
@@ -100,7 +121,7 @@ BOSS_SINK = 1.0          # butt bosses sink into the floor (avoids tangent conta
 BRD_U = U_BOT - WALL - BOSS_OD + BOSS_SINK   # underside of the charger board (rests on the rear boss)
 
 # ---------------------------------------------------------------- screws / inserts
-INSERT_D = 4.0            # hole for M3 heat-set insert (adjust to your inserts)
+INSERT_D = 4.1            # hole for M3 heat-set insert (user insert OD 4.7 mm)
 INSERT_DEPTH = 6.5
 SCREW_CLR = 3.3
 HEAD_CB = 6.2             # counterbore for M3 socket head
@@ -180,7 +201,7 @@ def outer_shell():
 # ======================================================================== cavities
 def cavities():
     c = box(WALL, FRONT_BLOCK_X0, -IHW, IHW, WALL, BODY_H - WALL)
-    gc = grip_box(-CAV_D / 2, CAV_D / 2, -30, U_BOT - WALL, -CAV_W / 2, CAV_W / 2, ch=1.5)
+    gc = grip_box(-CAV_D / 2, CAV_D / 2, -30, U_BOT - WALL, -CAV_W / 2, CAV_W / 2, ch=1.0)
     c = c.union(gc.intersect(box(-50, 300, -60, 60, -200, WALL + 0.5)))
     return c
 
@@ -236,10 +257,15 @@ def internals():
         parts.append(cyl_y(hx, hz, MS_PEG_D, -msy, msy))
     # --- pull stop rib (right half) above the trigger tail
     stop_z = _tail_top_at_pull() + 0.05
-    parts.append(box(82.0, 86.8, -IHW, 0.0, stop_z, stop_z + 3.0))
+    parts.append(box(STOP_X0, STOP_X1, -IHW, 0.0, stop_z, stop_z + STOP_H))
+    parts.append(box(STOP_WEB_X0, STOP_WEB_X1, -IHW, STOP_WEB_Y1, WALL, stop_z + STOP_H))
     # --- torsion spring post (left half) and shelf for its rear leg
-    parts.append(cyl_y(SPR_X, SPR_Z, SPR_POST_D, SPR_Y0, IHW))
-    parts.append(box(72.0, 81.0, SPR_Y0, IHW, 9.5, 11.0))
+    parts.append(cyl_y(SPR_X, SPR_Z, SPR_POST_D, SPR_Y0 + SPR_TAPER, IHW))
+    parts.append(cq.Workplane("XZ").center(SPR_X, SPR_Z).circle(SPR_POST_TIP_D / 2)
+                 .workplane(offset=-SPR_TAPER).circle(SPR_POST_D / 2).loft()
+                 .translate((0, SPR_Y0 + SPR_TAPER, 0)))
+    for th in SPR_FIN_DEG:
+        parts.append(spring_fin(th))
 
     # --- battery shelves and charger support rib in the butt
     for sgn in (1, -1):
@@ -248,7 +274,7 @@ def internals():
     # stop tabs above the battery pack (keeps it from sliding up into the body)
     for sgn in (1, -1):
         y0, y1 = sorted((sgn * (CAV_W / 2 + 0.3), sgn * 15.0))
-        parts.append(grip_box(-12, 12, BAT_U_TOP - 3.0, BAT_U_TOP - 0.4, y0, y1))
+        parts.append(grip_box(-12, 12, BAT_U_TOP - BAT_HEADROOM - 2.6, BAT_U_TOP - BAT_HEADROOM, y0, y1))
     # support rib under the front end of the charger board
     brd_u = BRD_U
     parts.append(grip_box(-CAV_D / 2 + 1 + CHG_L - 5, -CAV_D / 2 + 1 + CHG_L - 3, brd_u, U_BOT - WALL + 0.5, -8, 8))
@@ -256,6 +282,13 @@ def internals():
 
 
 # ======================================================================== printed trigger
+def spring_fin(theta_deg):
+    """radial fin near the spring post; the long leg leans on its clockwise face"""
+    bar = box(-SPR_FIN_T / 2, SPR_FIN_T / 2, SPR_FIN_Y0, IHW, SPR_FIN_R0, SPR_FIN_R1)
+    bar = bar.rotate((0, 0, 0), (0, 1, 0), 90.0 - theta_deg)
+    return bar.translate((SPR_X, 0, SPR_Z))
+
+
 def _catmull(pts, n=8):
     import numpy as np
     P = np.array(pts, float); out = []
@@ -273,12 +306,13 @@ def trigger(angle=0.0):
     blade_back = _catmull([(91.6, 2.4), (92.4, -4.0), (93.0, -12.0), (94.6, -20.0), (96.4, -24.4)])
     tip = _catmull([(96.4, -24.4), (99.0, -26.0), (102.6, -25.8), (105.2, -24.2)], 6)
     blade_front = _catmull([(105.2, -24.2), (102.4, -19.5), (100.6, -12.0), (101.6, -4.0), (104.2, 1.5), (104.6, 5.0)])
-    arm = [(103.2, 10.5), (101.0, 14.0), (101.0, 25.0), (95.0, 25.0), (95.0, 13.0), (92.0, 10.2), (84.0, 8.0), (84.0, 2.4)]
+    arm = [(103.2, 10.5), (ARM_FRONT_X, 14.0), (ARM_FRONT_X, 25.0), (95.0, 25.0), (95.0, 13.0), (92.0, 10.2), (84.0, 8.0), (84.0, 2.4)]
     prof = blade_back + tip[1:] + blade_front[1:] + arm
     t = side_extrude(prof, -TRIG_T / 2, TRIG_T / 2)
     t = t.union(cyl_y(PIV_X, PIV_Z, 12.0, -TRIG_T / 2, TRIG_T / 2))
     # ledge for the spring's front leg (sticks out on the left side)
-    t = t.union(box(88.0, 92.0, TRIG_T / 2 - 0.5, 14.0, 5.0, 8.0))
+    t = t.union(box(90.0, 93.2, TRIG_T / 2 - 0.5, LEDGE_Y1, 3.2, 5.6))
+    t = t.union(box(92.4, 93.2, TRIG_T / 2 - 0.5, LEDGE_Y1, 5.6, 6.8))
     t = t.cut(cyl_y(PIV_X, PIV_Z, PIV_HOLE_D, -10, 20))
     if angle:
         t = t.rotate((PIV_X, 0, PIV_Z), (PIV_X, 1, PIV_Z), angle)
@@ -286,13 +320,13 @@ def trigger(angle=0.0):
 
 def _tail_top_at_pull():
     """highest point of the trigger tail under the stop rib when fully pulled"""
-    t = trigger(PULL_DEG).intersect(box(82.0, 86.8, -10, 0, -5, 30))
+    t = trigger(PULL_DEG).intersect(box(STOP_X0, STOP_X1, -10, 0, -5, 30))
     return t.val().BoundingBox().zmax
 
 def microswitch(pressed=False):
     """placeholder switch with roller lever (for checks and renders)"""
     body = box(MS_REAR_X, MS_REAR_X + MS_H, -MS_T / 2, MS_T / 2, MS_Z0, MS_Z0 + MS_L)
-    out = ROLLER_FREE if not pressed else 5.1
+    out = ROLLER_FREE if not pressed else PRESS_TO
     rc_x = MS_REAR_X - out + ROLLER_D / 2
     rc_z = MS_Z0 + ROLLER_ALONG
     roller = cyl_y(rc_x, rc_z, ROLLER_D, -1.6, 1.6)
@@ -376,7 +410,7 @@ def build():
 def components():
     comp = {}
     comp["solenoid"] = box(SOL_X0, SOL_X0 + SOL_L, -SOL_W / 2, SOL_W / 2, SOL_Z0, SOL_Z0 + SOL_H)
-    comp["plunger"] = cyl_x(0, SOL_AXIS_Z, PLUNGER_D, SOL_X0 - NUB_REAR - 10, SOL_X0 + SOL_L + PLUNGER_FRONT)
+    comp["plunger"] = cyl_x(0, SOL_AXIS_Z, PLUNGER_D, SOL_X0 - NUB_REAR - SOL_STROKE, SOL_X0 + SOL_L + PLUNGER_FRONT)
     comp["esp32"] = box(ESP_X0, ESP_X0 + ESP_L, -ESP_W / 2, ESP_W / 2, ESP_PCB_Z, ESP_PCB_Z + ESP_PCB_T + 3.2)
     comp["esp32_pins"] = box(ESP_X0 + 6, ESP_X0 + ESP_L - 7, -ESP_W / 2 + 0.3, ESP_W / 2 - 0.3, ESP_PCB_Z - 8.5, ESP_PCB_Z)
     comp["camera"] = cyl_x(0, CAM_Z, CAM_D, BODY_L + CAM_PROTRUDE - CAM_LEN, BODY_L + CAM_PROTRUDE)
@@ -390,8 +424,8 @@ def components():
     comp["rocker"] = box(WALL, WALL + SW_DEPTH, -SW_CUT_Y / 2 + 0.5, SW_CUT_Y / 2 - 0.5, SW_Z - SW_CUT_Z / 2 + 0.5, SW_Z + SW_CUT_Z / 2 - 0.5)
     comp["microswitch"] = microswitch(pressed=False)
     comp["trigger"] = trigger()
-    comp["spring"] = cyl_y(SPR_X, SPR_Z, SPR_COIL_OD, SPR_Y0 + 0.5, SPR_Y0 + 0.5 + SPR_COIL_L).cut(
-        cyl_y(SPR_X, SPR_Z, SPR_COIL_OD - 1.6, SPR_Y0, SPR_Y0 + 1 + SPR_COIL_L))
+    comp["spring"] = cyl_y(SPR_X, SPR_Z, SPR_COIL_OD, SPR_Y0, SPR_Y0 + SPR_COIL_L).cut(
+        cyl_y(SPR_X, SPR_Z, SPR_POST_D - 0.2, SPR_Y0 - 1, SPR_Y0 + 1 + SPR_COIL_L))
     return comp
 
 
