@@ -1,0 +1,2 @@
+# Tags the ESP32-S3 receiver as a light gun so Batocera configures it for gun games.
+SUBSYSTEM=="input", KERNEL=="event*", ACTION=="add", ATTRS{name}=="*DIY Lightgun*", ENV{ID_INPUT_GUN}="1"
