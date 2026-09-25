@@ -12,6 +12,7 @@
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
+#include <FS.h>
 #include <string.h>
 
 #include "gun_packet.h"
