@@ -12,7 +12,7 @@ namespace config {
 constexpr int kPinSda = 21;
 constexpr int kPinScl = 22;
 constexpr int kPinTrigger = 18;   // microswitch COM, NO to ground
-constexpr int kPinSolenoid = 27;  // IRLZ44N gate via 100 ohm, 10 kohm pull-down
+constexpr int kPinSolenoid = 33;  // IRLZ44N gate via 100 ohm, 10 kohm pull-down
 
 // LED positions in normalised screen coordinates, measured from the edge of
 // the visible image. Values outside 0..1 are on the bezel.
