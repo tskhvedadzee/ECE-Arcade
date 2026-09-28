@@ -19,10 +19,10 @@ constexpr uint32_t kI2cClockHz = 400000;
 // LED positions in normalised screen coordinates, measured from the edge of
 // the visible image. Values outside 0..1 are on the bezel.
 constexpr Point2 kLedScreen[kLedCount] = {
-    {0.500f, -0.059f},  // top
-    {1.033f, 0.500f},   // right
-    {0.500f, 1.059f},   // bottom
-    {-0.033f, 0.500f},  // left
+    {0.500f, -0.048f},  // top,    14.33 mm above a 301.1 mm tall image
+    {1.037f, 0.500f},   // right,  14 mm outside a 376.3 mm wide image
+    {0.500f, 1.065f},   // bottom, 19.67 mm below
+    {-0.037f, 0.500f},  // left,   14 mm outside
 };
 
 // True if the camera image is mirrored relative to the barrel on that axis.
