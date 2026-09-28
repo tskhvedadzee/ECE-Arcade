@@ -1,19 +1,34 @@
 #include "ir_camera.h"
+
 #include <Arduino.h>
 
 namespace {
+
 constexpr uint8_t kRegisterReport = 0x36;
 constexpr int kReportLength = 16;
 constexpr int kMaxValidY = 767;  // empty slots read back as 1023
 
+// Consecutive failed reads before the bus is restarted. At the loop rate this
+// is well under a tenth of a second.
+constexpr int kErrorsBeforeRestart = 10;
+
 }  // namespace
 
-void IrCamera::begin(TwoWire& wire, bool flipX, bool flipY, uint8_t address) {
+void IrCamera::begin(TwoWire& wire, int sdaPin, int sclPin, uint32_t clockHz, bool flipX,
+                     bool flipY, uint8_t address) {
   wire_ = &wire;
+  sdaPin_ = sdaPin;
+  sclPin_ = sclPin;
+  clockHz_ = clockHz;
   address_ = address;
   flipX_ = flipX;
   flipY_ = flipY;
 
+  wire_->begin(sdaPin_, sclPin_, clockHz_);
+  configureSensor();
+}
+
+void IrCamera::configureSensor() {
   // Initialisation sequence from the DFRobot SEN0158 example code
   // (sensitivity block settings and extended report mode).
   writeRegister(0x30, 0x01);
@@ -25,11 +40,38 @@ void IrCamera::begin(TwoWire& wire, bool flipX, bool flipY, uint8_t address) {
   delay(100);
 }
 
+// A transfer cut short by a glitch or a reset can leave the sensor holding the
+// data line low, which wedges the bus permanently. Clocking the bus manually
+// lets the sensor finish that transfer, after which the driver is restarted.
+void IrCamera::restartBus() {
+  wire_->end();
+
+  pinMode(sdaPin_, INPUT_PULLUP);
+  pinMode(sclPin_, OUTPUT);
+  for (int i = 0; i < 9 && digitalRead(sdaPin_) == LOW; ++i) {
+    digitalWrite(sclPin_, LOW);
+    delayMicroseconds(5);
+    digitalWrite(sclPin_, HIGH);
+    delayMicroseconds(5);
+  }
+
+  wire_->begin(sdaPin_, sclPin_, clockHz_);
+  configureSensor();
+  Serial.println("camera bus restarted");
+}
+
 int IrCamera::read(Point2 blobs[4]) {
   wire_->beginTransmission(address_);
   wire_->write(kRegisterReport);
-  if (wire_->endTransmission() != 0) return -1;
-  if (wire_->requestFrom(static_cast<int>(address_), kReportLength) != kReportLength) return -1;
+  const bool addressed = wire_->endTransmission() == 0;
+  if (!addressed || wire_->requestFrom(static_cast<int>(address_), kReportLength) != kReportLength) {
+    if (++consecutiveErrors_ >= kErrorsBeforeRestart) {
+      consecutiveErrors_ = 0;
+      restartBus();
+    }
+    return -1;
+  }
+  consecutiveErrors_ = 0;
 
   uint8_t data[kReportLength];
   for (int i = 0; i < kReportLength; ++i) data[i] = wire_->read();

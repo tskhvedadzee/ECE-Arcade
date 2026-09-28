@@ -14,6 +14,8 @@ constexpr int kPinScl = 22;
 constexpr int kPinTrigger = 18;   // microswitch COM, NO to ground
 constexpr int kPinSolenoid = 33;  // IRLZ44N gate via 100 ohm, 10 kohm pull-down
 
+constexpr uint32_t kI2cClockHz = 400000;
+
 // LED positions in normalised screen coordinates, measured from the edge of
 // the visible image. Values outside 0..1 are on the bezel.
 constexpr Point2 kLedScreen[kLedCount] = {
@@ -25,7 +27,7 @@ constexpr Point2 kLedScreen[kLedCount] = {
 
 // True if the camera image is mirrored relative to the barrel on that axis.
 constexpr bool kCameraFlipX = false;
-constexpr bool kCameraFlipY = false;
+constexpr bool kCameraFlipY = true;
 
 // Radio. Channel and gun ID must match the receiver.
 constexpr uint8_t kRadioChannel = 1;
@@ -38,6 +40,14 @@ constexpr uint32_t kDebounceMs = 15;
 
 // Exponential smoothing factor for the cursor; 1.0 disables smoothing.
 constexpr float kSmoothing = 1.0f;
+
+// Firmware updates over the air. Holding the trigger at power-on for this
+// long starts an access point and waits for an upload instead of running
+// normally. The password must be at least 8 characters for WPA2.
+constexpr uint32_t kOtaHoldMs = 5000;
+constexpr char kOtaSsid[] = "GunV2-Update";
+constexpr char kOtaPassword[] = "lightgun";
+constexpr char kOtaHostname[] = "gun-v2";
 
 constexpr bool kSerialDebug = true;
 constexpr uint32_t kDebugIntervalMs = 100;

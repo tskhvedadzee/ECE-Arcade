@@ -4,6 +4,9 @@
 // Calibration is armed by holding the trigger during power-on. After the
 // trigger is released, the next pull stores the boresight for the centre of
 // the screen instead of shooting, and the solenoid fires to confirm.
+//
+// Keeping the trigger held for kOtaHoldMs starts firmware update mode
+// instead, so the gun can be reflashed without opening it.
 
 #include <Arduino.h>
 #include <Preferences.h>
@@ -15,6 +18,7 @@
 #include "gun_packet.h"
 #include "ir_camera.h"
 #include "led_tracker.h"
+#include "ota_mode.h"
 #include "radio_link.h"
 
 namespace {
@@ -69,6 +73,16 @@ void updateSolenoid(uint32_t nowMs) {
     digitalWrite(config::kPinSolenoid, LOW);
     solenoidActive = false;
   }
+}
+
+// Blocks while the trigger stays down, up to holdMs.
+bool triggerHeldFor(uint32_t holdMs) {
+  const uint32_t start = millis();
+  while (millis() - start < holdMs) {
+    if (digitalRead(config::kPinTrigger) != LOW) return false;
+    delay(10);
+  }
+  return true;
 }
 
 bool saveBoresight(const Frame& f) {
@@ -153,13 +167,20 @@ void setup() {
 
   trigger.begin();
   calibrationArmed = trigger.pressed();
+  if (calibrationArmed && triggerHeldFor(config::kOtaHoldMs)) {
+    // One solenoid pulse marks the switch to update mode.
+    digitalWrite(config::kPinSolenoid, HIGH);
+    delay(config::kSolenoidPulseMs);
+    digitalWrite(config::kPinSolenoid, LOW);
+    runOtaMode();
+  }
 
   storage.begin("gun", false);
   boresight.x = storage.getFloat("bore_x", kDefaultBoresight.x);
   boresight.y = storage.getFloat("bore_y", kDefaultBoresight.y);
 
-  Wire.begin(config::kPinSda, config::kPinScl, 400000);
-  camera.begin(Wire, config::kCameraFlipX, config::kCameraFlipY);
+  camera.begin(Wire, config::kPinSda, config::kPinScl, config::kI2cClockHz,
+               config::kCameraFlipX, config::kCameraFlipY);
 
   if (!radio.begin(config::kRadioChannel)) Serial.println("ESP-NOW init failed");
 }
